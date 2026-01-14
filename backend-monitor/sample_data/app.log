@@ -1,0 +1,7 @@
+[2023-10-01 10:00:00] INFO: Application started
+[2023-10-01 10:05:00] ERROR: Database connection failed
+[2023-10-01 10:10:00] WARN: High memory usage detected
+[2023-10-01 10:15:00] INFO: User login successful
+[2023-10-01 10:20:00] ERROR: Exception occurred during update
+[2023-10-01 10:25:00] INFO: Database truncate operation detected
+[2023-10-01 10:30:00] ERROR: File not found
