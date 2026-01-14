@@ -33,7 +33,7 @@ This tool was developed to address the need for efficient monitoring and debuggi
 - **CLI Interface**: Argument parsing with comprehensive help and examples
 
 ### Phase 4: Testing & Validation
-- Tested with various file types (.log, .sql, .txt, .json, .csv, .py)
+- Tested with various file types (.log, .sql, .txt, .json, .csv, .py, .db, .sqlite, .sqlite3)
 - Validated case-insensitive and regex search capabilities
 - Verified error handling and edge cases
 - Performance tested with sample data
@@ -55,6 +55,7 @@ Input (CLI Args) → File Scanner → Pattern Matcher → Result Highlighter →
 - **Language**: Python 3.10+ (uses only standard library)
 - **Search Algorithm**: Regex-based with re.IGNORECASE for case-insensitive matching
 - **File Handling**: Supports UTF-8 encoding with error tolerance
+- **Database Support**: Direct SQLite querying for .db, .sqlite, .sqlite3 files
 - **Performance**: Memory-efficient line-by-line processing for large files
 - **Output**: Terminal-friendly with color highlighting
 
@@ -151,15 +152,156 @@ python monitor.py /client/backups/ "UPDATE|DELETE|DROP" --file-type .sql
 python monitor.py /client/error_logs/ "exception|traceback" --regex
 ```
 
+#### 5. Search SQLite Databases
+```bash
+# Search for user data in SQLite database
+python monitor.py /data/users.db "john@example.com" --file-type .db
+
+# Find pending orders in database
+python monitor.py /ecommerce/orders.db pending --file-type .sqlite
+
+# Search across all database files in a directory
+python monitor.py /databases/ "admin" --file-type .db
+```
+
+### Database File Usage
+
+#### How Database Search Works
+When you provide a path to a SQLite database file (`.db`, `.sqlite`, `.sqlite3`), the tool:
+
+1. **Connects** to the SQLite database
+2. **Queries all tables** in the database
+3. **Searches every column** in every row of every table
+4. **Applies regex/case-insensitive matching** to find your keyword
+5. **Displays results** with table, column, and row information
+
+#### Database Path Examples
+
+**Single Database File:**
+```bash
+# Search in a specific database file
+python monitor.py /path/to/users.db "john@example.com"
+
+# Search for pending orders
+python monitor.py ./inventory.db pending
+
+# Case-sensitive search in database
+python monitor.py /data/app.db "ADMIN"  # Note: no --ignore-case flag
+```
+
+**Directory with Database Files:**
+```bash
+# Search all .db files in a directory
+python monitor.py /databases/ "error" --file-type .db
+
+# Search SQLite files recursively
+python monitor.py /project/data/ "test" --file-type .sqlite
+```
+
+#### Database Output Format
+```
+[database.db:table_name.column_name:row_number] content with **highlighted** keyword
+```
+
+Database Example:
+```
+[users.db:users.email:row1] john@**example**.com
+[orders.db:orders.status:row3] **pending**
+[inventory.db:products.name:row15] Wireless **Mouse**
+```
+
 ### Output Format
 ```
 [file.ext:line_number] content with **highlighted** keyword
+[file.db:table.column:row] content with **highlighted** keyword
 ```
 
-Example:
+Examples:
 ```
 [app.log:25] User authentication failed for **admin**
 [db.sql:150] **TRUNCATE** TABLE user_sessions;
+[users.db:users.name:row1] John **Doe**
+[orders.db:orders.status:row2] **pending**
+```
+
+## 🗄️ Database Path Configuration
+
+### Where to Add Database Paths
+
+**Direct Database File Path:**
+```bash
+python monitor.py /full/path/to/database.db "search_keyword"
+python monitor.py ./relative/path/database.sqlite "keyword"
+python monitor.py database.db "keyword"  # In current directory
+```
+
+**Directory Containing Databases:**
+```bash
+python monitor.py /path/to/database/directory/ "keyword" --file-type .db
+python monitor.py /client/databases/ "error" --file-type .sqlite
+```
+
+### Database Path Examples
+
+#### Local Development
+```bash
+# SQLite database in project directory
+python monitor.py ./data/users.db "admin@example.com"
+
+# Database in parent directory
+python monitor.py ../databases/app.db "pending"
+
+# Multiple databases in data folder
+python monitor.py ./data/ "john" --file-type .db
+```
+
+#### Production Server
+```bash
+# Database in application directory
+python monitor.py /var/app/data/users.db "inactive"
+
+# Database backups directory
+python monitor.py /backup/databases/ "error" --file-type .sqlite
+
+# Client database on network share
+python monitor.py /mnt/client/db/inventory.db "out_of_stock"
+```
+
+#### Docker/Container Environments
+```bash
+# Database mounted as volume
+python monitor.py /app/data/database.db "search_term"
+
+# Database in container data directory
+python monitor.py /data/db/ "admin" --file-type .db
+```
+
+### Database Path Best Practices
+
+1. **Use Absolute Paths** for production scripts
+2. **Use Relative Paths** for development/testing
+3. **Include File Extension** when specifying single files
+4. **Use --file-type Filter** when scanning directories
+5. **Ensure Read Permissions** on database files
+6. **Backup Databases** before running searches on production data
+
+### Common Database Path Patterns
+
+```bash
+# Web application databases
+/var/www/app/data/users.db
+/opt/myapp/db/sessions.sqlite
+/home/user/projects/ecommerce/orders.db
+
+# Development databases
+./data/test.db
+../databases/dev.sqlite
+/project/db/app.db
+
+# Client system databases
+/client/system/data/inventory.db
+/customer/db/transactions.sqlite
+/enterprise/data/employees.db
 ```
 
 ## 🎯 Client Database System Integration
@@ -169,6 +311,7 @@ Example:
    - Database log files (`postgresql.log`, `mysql.log`)
    - Application logs (`app.log`, `error.log`)
    - SQL dump files (`.sql`)
+   - SQLite database files (`.db`, `.sqlite`)
    - Configuration files (`.conf`, `.ini`)
 
 2. **Directory Structure**:
@@ -178,6 +321,10 @@ Example:
    │   ├── app.log
    │   ├── db.log
    │   └── error.log
+   ├── databases/
+   │   ├── users.db
+   │   ├── orders.sqlite
+   │   └── analytics.db
    ├── backups/
    │   ├── daily_dump.sql
    │   └── weekly_backup.sql
@@ -192,6 +339,21 @@ Example:
    - **Security Auditing**: Monitor access patterns and failed logins
 
 ### Common Monitoring Scenarios
+
+#### Database Content Monitoring
+```bash
+# Search user data in database
+python monitor.py /client/databases/users.db "admin@example.com"
+
+# Find pending orders
+python monitor.py /client/databases/orders.db pending
+
+# Monitor inventory levels
+python monitor.py /client/databases/inventory.db "out_of_stock"
+
+# Search across all client databases
+python monitor.py /client/databases/ "error" --file-type .db
+```
 
 #### Database Health Monitoring
 ```bash
@@ -227,6 +389,21 @@ python monitor.py /client/logs/ "disk full|no space"
 
 # Network connectivity
 python monitor.py /client/logs/ "network unreachable|connection lost"
+```
+
+#### Database Content Monitoring
+```bash
+# Search for sensitive data in databases
+python monitor.py /client/databases/ "password|ssn|credit_card" --file-type .db
+
+# Find inactive users
+python monitor.py /client/databases/ "inactive|suspended" --file-type .sqlite
+
+# Monitor order statuses
+python monitor.py /client/databases/ "pending|cancelled|refunded" --file-type .db
+
+# Check for admin users
+python monitor.py /client/databases/ "admin|superuser" --file-type .sqlite
 ```
 
 ### Automation Integration
